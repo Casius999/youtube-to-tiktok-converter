@@ -1,0 +1,47 @@
+steps:
+# Build the container image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}', '.']
+
+# Push the container image to Artifact Registry
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}']
+
+# Deploy container image to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+  - 'run'
+  - 'deploy'
+  - '${_SERVICE_NAME}'
+  - '--image'
+  - 'us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}'
+  - '--region'
+  - '${_REGION}'
+  - '--platform'
+  - 'managed'
+  - '--allow-unauthenticated'
+  - '--memory'
+  - '2Gi'
+  - '--min-instances'
+  - '1'
+  - '--max-instances'
+  - '10'
+
+# Create a MongoDB instance using GKE (optional)
+# - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+#   entrypoint: bash
+#   args:
+#   - '-c'
+#   - |
+#     gcloud container clusters create mongodb-cluster --num-nodes=1 --zone=${_REGION}-a || true
+#     gcloud container clusters get-credentials mongodb-cluster --zone=${_REGION}-a
+#     kubectl create namespace mongodb || true
+#     kubectl apply -f k8s/mongodb.yaml -n mongodb || true
+
+substitutions:
+  _SERVICE_NAME: youtube-tiktok-converter
+  _REGION: us-central1
+
+images:
+- 'us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}'
