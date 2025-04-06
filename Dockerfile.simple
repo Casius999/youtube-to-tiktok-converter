@@ -1,0 +1,15 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Copie du code source
+COPY . .
+
+# Installation des dépendances minimales
+RUN pip install --no-cache-dir fastapi uvicorn loguru pydantic python-dotenv
+
+# Exposition du port
+EXPOSE 8000
+
+# Commande de démarrage
+CMD ["python", "-m", "src.main", "web"]
