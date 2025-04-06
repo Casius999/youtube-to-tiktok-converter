@@ -1,1 +1,1 @@
-# Module web
+# Module d'interface web
