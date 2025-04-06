@@ -1,0 +1,77 @@
+name: Deploy to Google Cloud
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: powerful-host-455818-i8
+  REGION: us-central1
+  SERVICE_NAME: youtube-tiktok-converter
+  REPOSITORY: youtube-tiktok-repo
+
+jobs:
+  setup-and-deploy:
+    name: Setup and Deploy
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      # Authentification à Google Cloud
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+        with:
+          workload_identity_provider: 'projects/472679587773/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider'
+          service_account: 'github-actions-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
+      
+      # Configurer Docker pour utiliser l'authentification Google Cloud
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          version: '>= 363.0.0'
+      
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev
+      
+      # Construction et déploiement
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }} .
+          docker push ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+      
+      # Déployer vers Cloud Run
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v1
+        with:
+          service: ${{ env.SERVICE_NAME }}
+          region: ${{ env.REGION }}
+          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+          flags: '--allow-unauthenticated --memory=2Gi --cpu=1 --min-instances=0 --max-instances=10'
+
+      # Génération des logs de déploiement
+      - name: Create deployment logs
+        run: |
+          echo "$(date): Service ${{ env.SERVICE_NAME }} déployé avec l'image ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}" > deployment-logs.txt
+          echo "URL: ${{ steps.deploy.outputs.url }}" >> deployment-logs.txt
+          
+      # Stockage des logs de déploiement
+      - name: Upload deployment logs
+        uses: actions/upload-artifact@v3
+        with:
+          name: deployment-logs
+          path: deployment-logs.txt
+          
+      # Sortie de l'URL de service
+      - name: Output service URL
+        run: |
+          echo "Service URL: ${{ steps.deploy.outputs.url }}"
