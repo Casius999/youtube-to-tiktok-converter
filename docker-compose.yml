@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  # Application principale
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: youtube-tiktok-converter
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - MONGODB_URI=mongodb://mongodb:27017/youtube_tiktok_converter
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    command: web
+
+  # Base de données MongoDB pour le stockage des métadonnées
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    restart: unless-stopped
+
+  # Service pour les tâches en arrière-plan
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: youtube-tiktok-worker
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=INFO
+      - MONGODB_URI=mongodb://mongodb:27017/youtube_tiktok_converter
+    depends_on:
+      - mongodb
+      - app
+    restart: unless-stopped
+    entrypoint: ["python", "-m", "src.worker"]
+
+  # Proxy Nginx pour servir l'interface web
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
+      - ./data/output:/app/static
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
