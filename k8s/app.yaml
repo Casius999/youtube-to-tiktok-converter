@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: youtube-tiktok-converter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: youtube-tiktok-converter
+  template:
+    metadata:
+      labels:
+        app: youtube-tiktok-converter
+    spec:
+      containers:
+      - name: app
+        image: us-central1-docker.pkg.dev/powerful-host-455818-i8/youtube-tiktok/converter:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        env:
+        - name: MONGODB_URI
+          valueFrom:
+            configMapKeyRef:
+              name: mongodb-config
+              key: MONGODB_URI
+        - name: ENVIRONMENT
+          value: "production"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: API_HOST
+          value: "0.0.0.0"
+        - name: API_PORT
+          value: "8000"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: youtube-tiktok-data
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: youtube-tiktok-converter
+spec:
+  selector:
+    app: youtube-tiktok-converter
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: LoadBalancer
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: youtube-tiktok-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
