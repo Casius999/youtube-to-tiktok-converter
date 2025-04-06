@@ -1,0 +1,42 @@
+{
+  "name": "youtube-tiktok-trigger",
+  "description": "Trigger pour déployer l'application YouTube to TikTok Converter",
+  "github": {
+    "owner": "Casius999",
+    "name": "youtube-to-tiktok-converter",
+    "push": {
+      "branch": "^main$"
+    }
+  },
+  "build": {
+    "steps": [
+      {
+        "name": "gcr.io/cloud-builders/docker",
+        "args": ["build", "-t", "us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}", "."]
+      },
+      {
+        "name": "gcr.io/cloud-builders/docker",
+        "args": ["push", "us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}"]
+      },
+      {
+        "name": "gcr.io/google.com/cloudsdktool/cloud-sdk",
+        "entrypoint": "gcloud",
+        "args": [
+          "run",
+          "deploy",
+          "youtube-tiktok-converter",
+          "--image", "us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}",
+          "--region", "us-central1",
+          "--platform", "managed",
+          "--allow-unauthenticated",
+          "--memory", "2Gi",
+          "--min-instances", "1",
+          "--max-instances", "10"
+        ]
+      }
+    ],
+    "images": [
+      "us-central1-docker.pkg.dev/${PROJECT_ID}/youtube-tiktok/converter:${SHORT_SHA}"
+    ]
+  }
+}
