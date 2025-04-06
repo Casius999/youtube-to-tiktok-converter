@@ -29,7 +29,7 @@ jobs:
         name: 'Authenticate to Google Cloud'
         uses: 'google-github-actions/auth@v1'
         with:
-          workload_identity_provider: 'projects/472679587773/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider'
+          workload_identity_provider: 'projects/1004994141013/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider'
           service_account: 'github-actions-sa@${{ env.PROJECT_ID }}.iam.gserviceaccount.com'
       
       # Configurer Docker pour utiliser l'authentification Google Cloud
